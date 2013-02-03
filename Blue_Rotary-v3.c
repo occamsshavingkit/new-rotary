@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <ctype.h>
+#include <string.h>
 #include <util/delay.h>
 #include <avr/io.h>
 #include <avr/interrupt.h>
@@ -161,7 +162,15 @@ void interpret_message(char *message)
 		strcpy(&words[i++], p);
 		p = strtok(NULL, " ");
 	}
-	if(strcmp(&words[0], "HFP"))
+	if(strcmp(&words[0], "HFP") == 0)
+	{
+		
+	}
+	if(strcmp(&words[0], "RING") == 0)
+	{
+		
+	}
+	if(strcmp(&words[0], "SCO") == 0)
 	{
 		
 	}
@@ -181,7 +190,7 @@ int main(void){
         uart_recv = uart_getc();
         uart_err = (c & 0xff00) >> 8;
         uart_char = c & 0x00ff;
-        if(!(uart_err) && message_index < MAX_MESSAGE_LENGTH)
+        if(!(uart_err) && message_index < MAX_MESSAGE_LENGTH && uart_char != "\r")
         {
             message[message_index++] = uart_char;
         }
@@ -191,7 +200,7 @@ int main(void){
             message_index = 0;
             interpret_message(message);
         } 
-        sleep_cpu();        
+        sleep_cpu(); // we wake up when we receive a character, right?
     }
     return 0;
 }
