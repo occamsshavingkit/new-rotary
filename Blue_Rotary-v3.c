@@ -66,10 +66,10 @@ ISR(PCINT1_vect) //HOOK
     _delay_ms(50);
     if(PINC & (1<<HOOK)) { // picked up!
         LED_OFF();
-        TCCR0B |= (1<<CS00); // turn on dial tone
+        TCCR2B |= (1<<CS20); // turn on dial tone
     }
     else { // hung up!
-        TCCR0B &= ~(1<<CS00); // turn off dial tone
+        TCCR2B &= ~(1<<CS20); // turn off dial tone
         counter = 0; // clear out the dialed number
         LED_ON();
     }
