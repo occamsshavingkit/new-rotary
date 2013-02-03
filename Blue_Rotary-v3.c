@@ -156,21 +156,21 @@ void interpret_message(char *message)
 {
 	char words[8][32];
 	char *p = strtok(message, " ");
-	char i;
+	unsigned short i=0;
 	while (*p)
 	{
-		strcpy(&words[i++], p);
+		strcpy(words[i++], p);
 		p = strtok(NULL, " ");
 	}
-	if(strcmp(&words[0], "HFP") == 0)
+	if(strcmp(words[0], "HFP") == 0)
 	{
 		
 	}
-	if(strcmp(&words[0], "RING") == 0)
+	if(strcmp(words[0], "RING") == 0)
 	{
 		
 	}
-	if(strcmp(&words[0], "SCO") == 0)
+	if(strcmp(words[0], "SCO") == 0)
 	{
 		
 	}
