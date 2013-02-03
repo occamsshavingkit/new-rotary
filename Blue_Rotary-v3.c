@@ -30,7 +30,7 @@ ISR(TIMER0_OVF_vect)
 	cli();
     sleep_disable();
     sbi(PORTD,DT1);
-    sbi(PORTD,DT2);
+    cbi(PORTD,DT2);
 	sei();
     sleep_enable();
 }
@@ -51,7 +51,7 @@ ISR(TIMER2_COMPB_vect) // 440 Hz buzz
 {
     cli();
     sleep_disable();
-    cbi(PORTD,DT2);
+    sbi(PORTD,DT2);
     OCR2B = pgm_read_byte(&(sine_table[location_440 >> STEP_SHIFT]));
     location_440 += STEP_440;
     if(location_440 >= (SINE_SAMPLES << STEP_SHIFT)) location_440 -= (SINE_SAMPLES << STEP_SHIFT);
