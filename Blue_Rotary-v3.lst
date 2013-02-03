@@ -1,0 +1,1673 @@
+   1               		.file	"Blue_Rotary-v3.c"
+   2               	__SREG__ = 0x3f
+   3               	__SP_H__ = 0x3e
+   4               	__SP_L__ = 0x3d
+   5               	__CCP__ = 0x34
+   6               	__tmp_reg__ = 0
+   7               	__zero_reg__ = 1
+   8               		.global __do_copy_data
+   9               		.global __do_clear_bss
+  10               		.text
+  11               	.Ltext0:
+  12               		.cfi_sections	.debug_frame
+  13               	.global	__vector_16
+  15               	__vector_16:
+  16               	.LFB9:
+  17               		.file 1 "Blue_Rotary-v3.c"
+   1:Blue_Rotary-v3.c **** #include <stdlib.h>
+   2:Blue_Rotary-v3.c **** #include <stdio.h>
+   3:Blue_Rotary-v3.c **** #include <ctype.h>
+   4:Blue_Rotary-v3.c **** #include <string.h>
+   5:Blue_Rotary-v3.c **** #include <util/delay.h>
+   6:Blue_Rotary-v3.c **** #include <avr/io.h>
+   7:Blue_Rotary-v3.c **** #include <avr/interrupt.h>
+   8:Blue_Rotary-v3.c **** #include <avr/sleep.h>
+   9:Blue_Rotary-v3.c **** #include <avr/power.h>
+  10:Blue_Rotary-v3.c **** #include <avr/pgmspace.h>
+  11:Blue_Rotary-v3.c **** #include "uart.h"
+  12:Blue_Rotary-v3.c **** #include "BlueRotary.h"
+  13:Blue_Rotary-v3.c **** 
+  14:Blue_Rotary-v3.c **** 
+  15:Blue_Rotary-v3.c **** //================================================================
+  16:Blue_Rotary-v3.c **** //Define Global Variables
+  17:Blue_Rotary-v3.c **** //================================================================
+  18:Blue_Rotary-v3.c **** volatile char message_complete, ring_tone_flag;	//general purpse flags
+  19:Blue_Rotary-v3.c **** volatile int message_index=0;
+  20:Blue_Rotary-v3.c **** int dialed_number, counter;
+  21:Blue_Rotary-v3.c **** int get_number_timeout=0;
+  22:Blue_Rotary-v3.c **** char number_length, temp;
+  23:Blue_Rotary-v3.c **** char phone_number[MAX_NUMBER_LENGTH];
+  24:Blue_Rotary-v3.c **** char rotary_high;
+  25:Blue_Rotary-v3.c **** int connected=0;
+  26:Blue_Rotary-v3.c **** unsigned int location_350=0, location_440=0;
+  27:Blue_Rotary-v3.c **** 
+  28:Blue_Rotary-v3.c **** ISR(TIMER0_OVF_vect)
+  29:Blue_Rotary-v3.c **** {
+  18               		.loc 1 29 0
+  19               		.cfi_startproc
+  20 0000 1F92      		push r1
+  21               	.LCFI0:
+  22               		.cfi_def_cfa_offset 3
+  23               		.cfi_offset 1, -2
+  24 0002 0F92      		push r0
+  25               	.LCFI1:
+  26               		.cfi_def_cfa_offset 4
+  27               		.cfi_offset 0, -3
+  28 0004 0FB6      		in r0,__SREG__
+  29 0006 0F92      		push r0
+  30 0008 1124      		clr __zero_reg__
+  31 000a 8F93      		push r24
+  32               	.LCFI2:
+  33               		.cfi_def_cfa_offset 5
+  34               		.cfi_offset 24, -4
+  35               	/* prologue: Signal */
+  36               	/* frame size = 0 */
+  37               	/* stack size = 4 */
+  38               	.L__stack_usage = 4
+  30:Blue_Rotary-v3.c **** 	cli();
+  39               		.loc 1 30 0
+  40               	/* #APP */
+  41               	 ;  30 "Blue_Rotary-v3.c" 1
+  42 000c F894      		cli
+  43               	 ;  0 "" 2
+  31:Blue_Rotary-v3.c ****     sleep_disable();
+  44               		.loc 1 31 0
+  45               	/* #NOAPP */
+  46 000e 83B7      		in r24,83-32
+  47 0010 8E7F      		andi r24,lo8(-2)
+  48 0012 83BF      		out 83-32,r24
+  32:Blue_Rotary-v3.c ****     sbi(PORTD,DT1);
+  49               		.loc 1 32 0
+  50 0014 5E9A      		sbi 43-32,6
+  33:Blue_Rotary-v3.c ****     cbi(PORTD,DT2);
+  51               		.loc 1 33 0
+  52 0016 5F98      		cbi 43-32,7
+  34:Blue_Rotary-v3.c **** 	sei();
+  53               		.loc 1 34 0
+  54               	/* #APP */
+  55               	 ;  34 "Blue_Rotary-v3.c" 1
+  56 0018 7894      		sei
+  57               	 ;  0 "" 2
+  35:Blue_Rotary-v3.c ****     sleep_enable();
+  58               		.loc 1 35 0
+  59               	/* #NOAPP */
+  60 001a 83B7      		in r24,83-32
+  61 001c 8160      		ori r24,lo8(1)
+  62 001e 83BF      		out 83-32,r24
+  63               	/* epilogue start */
+  36:Blue_Rotary-v3.c **** }
+  64               		.loc 1 36 0
+  65 0020 8F91      		pop r24
+  66 0022 0F90      		pop r0
+  67 0024 0FBE      		out __SREG__,r0
+  68 0026 0F90      		pop r0
+  69 0028 1F90      		pop r1
+  70 002a 1895      		reti
+  71               		.cfi_endproc
+  72               	.LFE9:
+  74               	.global	__vector_7
+  76               	__vector_7:
+  77               	.LFB10:
+  37:Blue_Rotary-v3.c **** 
+  38:Blue_Rotary-v3.c **** ISR(TIMER2_COMPA_vect) // 350 Hz buzz
+  39:Blue_Rotary-v3.c **** {
+  78               		.loc 1 39 0
+  79               		.cfi_startproc
+  80 002c 1F92      		push r1
+  81               	.LCFI3:
+  82               		.cfi_def_cfa_offset 3
+  83               		.cfi_offset 1, -2
+  84 002e 0F92      		push r0
+  85               	.LCFI4:
+  86               		.cfi_def_cfa_offset 4
+  87               		.cfi_offset 0, -3
+  88 0030 0FB6      		in r0,__SREG__
+  89 0032 0F92      		push r0
+  90 0034 1124      		clr __zero_reg__
+  91 0036 2F93      		push r18
+  92               	.LCFI5:
+  93               		.cfi_def_cfa_offset 5
+  94               		.cfi_offset 18, -4
+  95 0038 3F93      		push r19
+  96               	.LCFI6:
+  97               		.cfi_def_cfa_offset 6
+  98               		.cfi_offset 19, -5
+  99 003a 4F93      		push r20
+ 100               	.LCFI7:
+ 101               		.cfi_def_cfa_offset 7
+ 102               		.cfi_offset 20, -6
+ 103 003c 8F93      		push r24
+ 104               	.LCFI8:
+ 105               		.cfi_def_cfa_offset 8
+ 106               		.cfi_offset 24, -7
+ 107 003e 9F93      		push r25
+ 108               	.LCFI9:
+ 109               		.cfi_def_cfa_offset 9
+ 110               		.cfi_offset 25, -8
+ 111 0040 EF93      		push r30
+ 112               	.LCFI10:
+ 113               		.cfi_def_cfa_offset 10
+ 114               		.cfi_offset 30, -9
+ 115 0042 FF93      		push r31
+ 116               	.LCFI11:
+ 117               		.cfi_def_cfa_offset 11
+ 118               		.cfi_offset 31, -10
+ 119               	/* prologue: Signal */
+ 120               	/* frame size = 0 */
+ 121               	/* stack size = 10 */
+ 122               	.L__stack_usage = 10
+  40:Blue_Rotary-v3.c ****     cli();
+ 123               		.loc 1 40 0
+ 124               	/* #APP */
+ 125               	 ;  40 "Blue_Rotary-v3.c" 1
+ 126 0044 F894      		cli
+ 127               	 ;  0 "" 2
+  41:Blue_Rotary-v3.c ****     sleep_disable();
+ 128               		.loc 1 41 0
+ 129               	/* #NOAPP */
+ 130 0046 83B7      		in r24,83-32
+ 131 0048 8E7F      		andi r24,lo8(-2)
+ 132 004a 83BF      		out 83-32,r24
+  42:Blue_Rotary-v3.c ****     cbi(PORTD,DT1);
+ 133               		.loc 1 42 0
+ 134 004c 5E98      		cbi 43-32,6
+ 135               	.LVL0:
+ 136               	.LBB13:
+  43:Blue_Rotary-v3.c ****     OCR2A = pgm_read_byte(&(sine_table[location_350 >> STEP_SHIFT]));
+ 137               		.loc 1 43 0
+ 138 004e 8091 0000 		lds r24,location_350
+ 139 0052 9091 0000 		lds r25,location_350+1
+ 140 0056 FC01      		movw r30,r24
+ 141 0058 0024      		clr __tmp_reg__
+ 142 005a EE0F      		lsl r30
+ 143 005c FF1F      		rol r31
+ 144 005e 001C      		rol __tmp_reg__
+ 145 0060 EE0F      		lsl r30
+ 146 0062 FF1F      		rol r31
+ 147 0064 001C      		rol __tmp_reg__
+ 148 0066 EF2F      		mov r30,r31
+ 149 0068 F02D      		mov r31,__tmp_reg__
+ 150 006a E050      		subi r30,lo8(-(sine_table))
+ 151 006c F040      		sbci r31,hi8(-(sine_table))
+ 152               	/* #APP */
+ 153               	 ;  43 "Blue_Rotary-v3.c" 1
+ 154 006e E491      		lpm r30, Z
+ 155               		
+ 156               	 ;  0 "" 2
+ 157               	.LVL1:
+ 158               	/* #NOAPP */
+ 159               	.LBE13:
+ 160 0070 E093 B300 		sts 179,r30
+  44:Blue_Rotary-v3.c ****     location_350 += STEP_350;
+ 161               		.loc 1 44 0
+ 162 0074 9C01      		movw r18,r24
+ 163 0076 2A54      		subi r18,lo8(-(182))
+ 164 0078 3F4F      		sbci r19,hi8(-(182))
+ 165 007a 3093 0000 		sts location_350+1,r19
+ 166 007e 2093 0000 		sts location_350,r18
+  45:Blue_Rotary-v3.c ****     if(location_350 >= (SINE_SAMPLES << STEP_SHIFT)) location_350 -= (SINE_SAMPLES << STEP_SHIFT);
+ 167               		.loc 1 45 0
+ 168 0082 4FE3      		ldi r20,hi8(16320)
+ 169 0084 203C      		cpi r18,lo8(16320)
+ 170 0086 3407      		cpc r19,r20
+ 171 0088 00F0      		brlo .L3
+ 172               		.loc 1 45 0 is_stmt 0 discriminator 1
+ 173 008a 8A50      		subi r24,lo8(-(-16138))
+ 174 008c 9F43      		sbci r25,hi8(-(-16138))
+ 175 008e 9093 0000 		sts location_350+1,r25
+ 176 0092 8093 0000 		sts location_350,r24
+ 177               	.L3:
+  46:Blue_Rotary-v3.c ****     sei();    
+ 178               		.loc 1 46 0 is_stmt 1
+ 179               	/* #APP */
+ 180               	 ;  46 "Blue_Rotary-v3.c" 1
+ 181 0096 7894      		sei
+ 182               	 ;  0 "" 2
+  47:Blue_Rotary-v3.c ****     sleep_enable();
+ 183               		.loc 1 47 0
+ 184               	/* #NOAPP */
+ 185 0098 83B7      		in r24,83-32
+ 186 009a 8160      		ori r24,lo8(1)
+ 187 009c 83BF      		out 83-32,r24
+ 188               	/* epilogue start */
+  48:Blue_Rotary-v3.c **** }
+ 189               		.loc 1 48 0
+ 190 009e FF91      		pop r31
+ 191 00a0 EF91      		pop r30
+ 192               	.LVL2:
+ 193 00a2 9F91      		pop r25
+ 194 00a4 8F91      		pop r24
+ 195 00a6 4F91      		pop r20
+ 196 00a8 3F91      		pop r19
+ 197 00aa 2F91      		pop r18
+ 198 00ac 0F90      		pop r0
+ 199 00ae 0FBE      		out __SREG__,r0
+ 200 00b0 0F90      		pop r0
+ 201 00b2 1F90      		pop r1
+ 202 00b4 1895      		reti
+ 203               		.cfi_endproc
+ 204               	.LFE10:
+ 206               	.global	__vector_8
+ 208               	__vector_8:
+ 209               	.LFB11:
+  49:Blue_Rotary-v3.c **** 
+  50:Blue_Rotary-v3.c **** ISR(TIMER2_COMPB_vect) // 440 Hz buzz
+  51:Blue_Rotary-v3.c **** {
+ 210               		.loc 1 51 0
+ 211               		.cfi_startproc
+ 212 00b6 1F92      		push r1
+ 213               	.LCFI12:
+ 214               		.cfi_def_cfa_offset 3
+ 215               		.cfi_offset 1, -2
+ 216 00b8 0F92      		push r0
+ 217               	.LCFI13:
+ 218               		.cfi_def_cfa_offset 4
+ 219               		.cfi_offset 0, -3
+ 220 00ba 0FB6      		in r0,__SREG__
+ 221 00bc 0F92      		push r0
+ 222 00be 1124      		clr __zero_reg__
+ 223 00c0 2F93      		push r18
+ 224               	.LCFI14:
+ 225               		.cfi_def_cfa_offset 5
+ 226               		.cfi_offset 18, -4
+ 227 00c2 3F93      		push r19
+ 228               	.LCFI15:
+ 229               		.cfi_def_cfa_offset 6
+ 230               		.cfi_offset 19, -5
+ 231 00c4 4F93      		push r20
+ 232               	.LCFI16:
+ 233               		.cfi_def_cfa_offset 7
+ 234               		.cfi_offset 20, -6
+ 235 00c6 8F93      		push r24
+ 236               	.LCFI17:
+ 237               		.cfi_def_cfa_offset 8
+ 238               		.cfi_offset 24, -7
+ 239 00c8 9F93      		push r25
+ 240               	.LCFI18:
+ 241               		.cfi_def_cfa_offset 9
+ 242               		.cfi_offset 25, -8
+ 243 00ca EF93      		push r30
+ 244               	.LCFI19:
+ 245               		.cfi_def_cfa_offset 10
+ 246               		.cfi_offset 30, -9
+ 247 00cc FF93      		push r31
+ 248               	.LCFI20:
+ 249               		.cfi_def_cfa_offset 11
+ 250               		.cfi_offset 31, -10
+ 251               	/* prologue: Signal */
+ 252               	/* frame size = 0 */
+ 253               	/* stack size = 10 */
+ 254               	.L__stack_usage = 10
+  52:Blue_Rotary-v3.c ****     cli();
+ 255               		.loc 1 52 0
+ 256               	/* #APP */
+ 257               	 ;  52 "Blue_Rotary-v3.c" 1
+ 258 00ce F894      		cli
+ 259               	 ;  0 "" 2
+  53:Blue_Rotary-v3.c ****     sleep_disable();
+ 260               		.loc 1 53 0
+ 261               	/* #NOAPP */
+ 262 00d0 83B7      		in r24,83-32
+ 263 00d2 8E7F      		andi r24,lo8(-2)
+ 264 00d4 83BF      		out 83-32,r24
+  54:Blue_Rotary-v3.c ****     sbi(PORTD,DT2);
+ 265               		.loc 1 54 0
+ 266 00d6 5F9A      		sbi 43-32,7
+ 267               	.LVL3:
+ 268               	.LBB14:
+  55:Blue_Rotary-v3.c ****     OCR2B = pgm_read_byte(&(sine_table[location_440 >> STEP_SHIFT]));
+ 269               		.loc 1 55 0
+ 270 00d8 8091 0000 		lds r24,location_440
+ 271 00dc 9091 0000 		lds r25,location_440+1
+ 272 00e0 FC01      		movw r30,r24
+ 273 00e2 0024      		clr __tmp_reg__
+ 274 00e4 EE0F      		lsl r30
+ 275 00e6 FF1F      		rol r31
+ 276 00e8 001C      		rol __tmp_reg__
+ 277 00ea EE0F      		lsl r30
+ 278 00ec FF1F      		rol r31
+ 279 00ee 001C      		rol __tmp_reg__
+ 280 00f0 EF2F      		mov r30,r31
+ 281 00f2 F02D      		mov r31,__tmp_reg__
+ 282 00f4 E050      		subi r30,lo8(-(sine_table))
+ 283 00f6 F040      		sbci r31,hi8(-(sine_table))
+ 284               	/* #APP */
+ 285               	 ;  55 "Blue_Rotary-v3.c" 1
+ 286 00f8 E491      		lpm r30, Z
+ 287               		
+ 288               	 ;  0 "" 2
+ 289               	.LVL4:
+ 290               	/* #NOAPP */
+ 291               	.LBE14:
+ 292 00fa E093 B400 		sts 180,r30
+  56:Blue_Rotary-v3.c ****     location_440 += STEP_440;
+ 293               		.loc 1 56 0
+ 294 00fe 9C01      		movw r18,r24
+ 295 0100 2B51      		subi r18,lo8(-(229))
+ 296 0102 3F4F      		sbci r19,hi8(-(229))
+ 297 0104 3093 0000 		sts location_440+1,r19
+ 298 0108 2093 0000 		sts location_440,r18
+  57:Blue_Rotary-v3.c ****     if(location_440 >= (SINE_SAMPLES << STEP_SHIFT)) location_440 -= (SINE_SAMPLES << STEP_SHIFT);
+ 299               		.loc 1 57 0
+ 300 010c 4FE3      		ldi r20,hi8(16320)
+ 301 010e 203C      		cpi r18,lo8(16320)
+ 302 0110 3407      		cpc r19,r20
+ 303 0112 00F0      		brlo .L6
+ 304               		.loc 1 57 0 is_stmt 0 discriminator 1
+ 305 0114 8B5D      		subi r24,lo8(-(-16091))
+ 306 0116 9E43      		sbci r25,hi8(-(-16091))
+ 307 0118 9093 0000 		sts location_440+1,r25
+ 308 011c 8093 0000 		sts location_440,r24
+ 309               	.L6:
+  58:Blue_Rotary-v3.c ****     sei();
+ 310               		.loc 1 58 0 is_stmt 1
+ 311               	/* #APP */
+ 312               	 ;  58 "Blue_Rotary-v3.c" 1
+ 313 0120 7894      		sei
+ 314               	 ;  0 "" 2
+  59:Blue_Rotary-v3.c ****     sleep_enable();
+ 315               		.loc 1 59 0
+ 316               	/* #NOAPP */
+ 317 0122 83B7      		in r24,83-32
+ 318 0124 8160      		ori r24,lo8(1)
+ 319 0126 83BF      		out 83-32,r24
+ 320               	/* epilogue start */
+  60:Blue_Rotary-v3.c **** }
+ 321               		.loc 1 60 0
+ 322 0128 FF91      		pop r31
+ 323 012a EF91      		pop r30
+ 324               	.LVL5:
+ 325 012c 9F91      		pop r25
+ 326 012e 8F91      		pop r24
+ 327 0130 4F91      		pop r20
+ 328 0132 3F91      		pop r19
+ 329 0134 2F91      		pop r18
+ 330 0136 0F90      		pop r0
+ 331 0138 0FBE      		out __SREG__,r0
+ 332 013a 0F90      		pop r0
+ 333 013c 1F90      		pop r1
+ 334 013e 1895      		reti
+ 335               		.cfi_endproc
+ 336               	.LFE11:
+ 338               	.global	__vector_4
+ 340               	__vector_4:
+ 341               	.LFB12:
+  61:Blue_Rotary-v3.c **** 
+  62:Blue_Rotary-v3.c **** ISR(PCINT1_vect) //HOOK
+  63:Blue_Rotary-v3.c **** {
+ 342               		.loc 1 63 0
+ 343               		.cfi_startproc
+ 344 0140 1F92      		push r1
+ 345               	.LCFI21:
+ 346               		.cfi_def_cfa_offset 3
+ 347               		.cfi_offset 1, -2
+ 348 0142 0F92      		push r0
+ 349               	.LCFI22:
+ 350               		.cfi_def_cfa_offset 4
+ 351               		.cfi_offset 0, -3
+ 352 0144 0FB6      		in r0,__SREG__
+ 353 0146 0F92      		push r0
+ 354 0148 1124      		clr __zero_reg__
+ 355 014a 8F93      		push r24
+ 356               	.LCFI23:
+ 357               		.cfi_def_cfa_offset 5
+ 358               		.cfi_offset 24, -4
+ 359 014c 9F93      		push r25
+ 360               	.LCFI24:
+ 361               		.cfi_def_cfa_offset 6
+ 362               		.cfi_offset 25, -5
+ 363 014e AF93      		push r26
+ 364               	.LCFI25:
+ 365               		.cfi_def_cfa_offset 7
+ 366               		.cfi_offset 26, -6
+ 367 0150 BF93      		push r27
+ 368               	.LCFI26:
+ 369               		.cfi_def_cfa_offset 8
+ 370               		.cfi_offset 27, -7
+ 371               	/* prologue: Signal */
+ 372               	/* frame size = 0 */
+ 373               	/* stack size = 7 */
+ 374               	.L__stack_usage = 7
+  64:Blue_Rotary-v3.c ****     cli();
+ 375               		.loc 1 64 0
+ 376               	/* #APP */
+ 377               	 ;  64 "Blue_Rotary-v3.c" 1
+ 378 0152 F894      		cli
+ 379               	 ;  0 "" 2
+  65:Blue_Rotary-v3.c ****     sleep_disable();
+ 380               		.loc 1 65 0
+ 381               	/* #NOAPP */
+ 382 0154 83B7      		in r24,83-32
+ 383 0156 8E7F      		andi r24,lo8(-2)
+ 384 0158 83BF      		out 83-32,r24
+ 385               	.LVL6:
+ 386               	.LBB15:
+ 387               	.LBB16:
+ 388               		.file 2 "/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h"
+   1:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** /* Copyright (c) 2002, Marek Michalkiewicz
+   2:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****    Copyright (c) 2004,2005,2007 Joerg Wunsch
+   3:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****    Copyright (c) 2007  Florin-Viorel Petrov
+   4:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****    All rights reserved.
+   5:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** 
+   6:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****    Redistribution and use in source and binary forms, with or without
+   7:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****    modification, are permitted provided that the following conditions are met:
+   8:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** 
+   9:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****    * Redistributions of source code must retain the above copyright
+  10:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****      notice, this list of conditions and the following disclaimer.
+  11:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** 
+  12:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****    * Redistributions in binary form must reproduce the above copyright
+  13:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****      notice, this list of conditions and the following disclaimer in
+  14:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****      the documentation and/or other materials provided with the
+  15:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****      distribution.
+  16:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** 
+  17:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****    * Neither the name of the copyright holders nor the names of
+  18:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****      contributors may be used to endorse or promote products derived
+  19:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****      from this software without specific prior written permission.
+  20:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** 
+  21:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+  22:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****   AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+  23:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****   IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+  24:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****   ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+  25:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****   LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+  26:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****   CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+  27:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****   SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+  28:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****   INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+  29:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****   CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+  30:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+  31:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****   POSSIBILITY OF SUCH DAMAGE. */
+  32:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** 
+  33:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** /* $Id: delay.h.in 2251 2011-09-14 08:20:33Z joerg_wunsch $ */
+  34:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** 
+  35:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** #ifndef _UTIL_DELAY_H_
+  36:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** #define _UTIL_DELAY_H_ 1
+  37:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** 
+  38:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** #ifndef __HAS_DELAY_CYCLES
+  39:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** #define __HAS_DELAY_CYCLES 1
+  40:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** #endif
+  41:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** 
+  42:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** #include <inttypes.h>
+  43:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** #include <util/delay_basic.h>
+  44:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** #include <math.h>
+  45:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** 
+  46:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** /** \file */
+  47:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** /** \defgroup util_delay <util/delay.h>: Convenience functions for busy-wait delay loops
+  48:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****     \code
+  49:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****     #define F_CPU 1000000UL  // 1 MHz
+  50:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****     //#define F_CPU 14.7456E6
+  51:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****     #include <util/delay.h>
+  52:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****     \endcode
+  53:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** 
+  54:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****     \note As an alternative method, it is possible to pass the
+  55:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****     F_CPU macro down to the compiler from the Makefile.
+  56:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****     Obviously, in that case, no \c \#define statement should be
+  57:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****     used.
+  58:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** 
+  59:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****     The functions in this header file are wrappers around the basic
+  60:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****     busy-wait functions from <util/delay_basic.h>.  They are meant as
+  61:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****     convenience functions where actual time values can be specified
+  62:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****     rather than a number of cycles to wait for.  The idea behind is
+  63:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****     that compile-time constant expressions will be eliminated by
+  64:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****     compiler optimization so floating-point expressions can be used
+  65:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****     to calculate the number of delay cycles needed based on the CPU
+  66:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****     frequency passed by the macro F_CPU.
+  67:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** 
+  68:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****     \note In order for these functions to work as intended, compiler
+  69:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****     optimizations <em>must</em> be enabled, and the delay time
+  70:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****     <em>must</em> be an expression that is a known constant at
+  71:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****     compile-time.  If these requirements are not met, the resulting
+  72:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****     delay will be much longer (and basically unpredictable), and
+  73:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****     applications that otherwise do not use floating-point calculations
+  74:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****     will experience severe code bloat by the floating-point library
+  75:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****     routines linked into the application.
+  76:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** 
+  77:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****     The functions available allow the specification of microsecond, and
+  78:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****     millisecond delays directly, using the application-supplied macro
+  79:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****     F_CPU as the CPU clock frequency (in Hertz).
+  80:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** 
+  81:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** */
+  82:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** 
+  83:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** #if !defined(__DOXYGEN__)
+  84:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** static inline void _delay_us(double __us) __attribute__((always_inline));
+  85:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** static inline void _delay_ms(double __ms) __attribute__((always_inline));
+  86:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** #endif
+  87:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** 
+  88:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** #ifndef F_CPU
+  89:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** /* prevent compiler error by supplying a default */
+  90:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** # warning "F_CPU not defined for <util/delay.h>"
+  91:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** # define F_CPU 1000000UL
+  92:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** #endif
+  93:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** 
+  94:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** #ifndef __OPTIMIZE__
+  95:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** # warning "Compiler optimizations disabled; functions from <util/delay.h> won't work as designed"
+  96:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** #endif
+  97:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** 
+  98:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** #if __HAS_DELAY_CYCLES && defined(__OPTIMIZE__) && \
+  99:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****   !defined(__DELAY_BACKWARD_COMPATIBLE__) &&	   \
+ 100:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****   __STDC_HOSTED__
+ 101:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** #  include <math.h>
+ 102:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** #endif
+ 103:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** 
+ 104:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** /**
+ 105:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****    \ingroup util_delay
+ 106:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** 
+ 107:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****    Perform a delay of \c __ms milliseconds, using _delay_loop_2().
+ 108:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** 
+ 109:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****    The macro F_CPU is supposed to be defined to a
+ 110:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****    constant defining the CPU clock frequency (in Hertz).
+ 111:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** 
+ 112:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****    The maximal possible delay is 262.14 ms / F_CPU in MHz.
+ 113:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** 
+ 114:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****    When the user request delay which exceed the maximum possible one,
+ 115:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****    _delay_ms() provides a decreased resolution functionality. In this
+ 116:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****    mode _delay_ms() will work with a resolution of 1/10 ms, providing
+ 117:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****    delays up to 6.5535 seconds (independent from CPU frequency).  The
+ 118:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****    user will not be informed about decreased resolution.
+ 119:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** 
+ 120:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****    If the avr-gcc toolchain has __builtin_avr_delay_cycles(unsigned long)
+ 121:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****    support, maximal possible delay is 4294967.295 ms/ F_CPU in MHz. For
+ 122:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****    values greater than the maximal possible delay, overflows results in
+ 123:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****    no delay i.e., 0ms.
+ 124:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** 
+ 125:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****    Conversion of __us into clock cycles may not always result in integer.
+ 126:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****    By default, the clock cycles rounded up to next integer. This ensures that
+ 127:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****    the user gets atleast __us microseconds of delay.
+ 128:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** 
+ 129:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****    Alternatively, user can define __DELAY_ROUND_DOWN__ and __DELAY_ROUND_CLOSEST__
+ 130:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****    to round down and round to closest integer.
+ 131:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** 
+ 132:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****    Note: The new implementation of _delay_ms(double __ms) with 
+ 133:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****     __builtin_avr_delay_cycles(unsigned long) support is not backward compatible. 
+ 134:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****    User can define __DELAY_BACKWARD_COMPATIBLE__ to get a backward compatible delay.
+ 135:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****    Also, the backward compatible
+ 136:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****    algorithm will be chosen if the code is compiled in a <em>freestanding
+ 137:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****    environment</em> (GCC option \c -ffreestanding), as the math functions
+ 138:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****    required for rounding are not available to the compiler then.
+ 139:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** 
+ 140:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****  */
+ 141:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** void
+ 142:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** _delay_ms(double __ms)
+ 143:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** {
+ 144:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** 	uint16_t __ticks;
+ 145:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** 	double __tmp ; 
+ 146:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** #if __HAS_DELAY_CYCLES && defined(__OPTIMIZE__) && \
+ 147:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****   !defined(__DELAY_BACKWARD_COMPATIBLE__) &&	   \
+ 148:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h ****   __STDC_HOSTED__
+ 149:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** 	uint32_t __ticks_dc;
+ 150:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** 	extern void __builtin_avr_delay_cycles(unsigned long);
+ 151:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** 	__tmp = ((F_CPU) / 1e3) * __ms;
+ 152:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** 
+ 153:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** 	#if defined(__DELAY_ROUND_DOWN__)
+ 154:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** 		__ticks_dc = (uint32_t)fabs(__tmp);
+ 155:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** 
+ 156:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** 	#elif defined(__DELAY_ROUND_CLOSEST__)
+ 157:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** 		__ticks_dc = (uint32_t)(fabs(__tmp)+0.5);
+ 158:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** 
+ 159:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** 	#else
+ 160:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** 		//round up by default
+ 161:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** 		__ticks_dc = (uint32_t)(ceil(fabs(__tmp)));
+ 162:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** 	#endif
+ 163:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** 
+ 164:/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/util/delay.h **** 	__builtin_avr_delay_cycles(__ticks_dc);
+ 389               		.loc 2 164 0
+ 390 015a 8FE7      		 ldi r24,lo8(79999)
+ 391 015c 98E3      	    ldi r25,hi8(79999)
+ 392 015e A1E0      	    ldi r26,hlo8(79999)
+ 393 0160 8150      	    1:subi r24,1
+ 394 0162 9040      	    sbci r25,0
+ 395 0164 A040      	    sbci r26,0
+ 396 0166 01F4      	    brne 1b
+ 397 0168 00C0      		rjmp .
+ 398 016a 0000      		nop
+ 399               	.LBE16:
+ 400               	.LBE15:
+  66:Blue_Rotary-v3.c ****     _delay_ms(50);
+  67:Blue_Rotary-v3.c ****     if(PINC & (1<<HOOK)) { // picked up!
+ 401               		.loc 1 67 0
+ 402 016c 3099      		sbic 38-32,0
+ 403 016e 00C0      		rjmp .L10
+  68:Blue_Rotary-v3.c ****         LED_OFF();
+  69:Blue_Rotary-v3.c ****         TCCR0B |= (1<<CS00); // turn on dial tone
+  70:Blue_Rotary-v3.c ****     }
+  71:Blue_Rotary-v3.c ****     else { // hung up!
+  72:Blue_Rotary-v3.c ****         TCCR0B &= ~(1<<CS00); // turn off dial tone
+ 404               		.loc 1 72 0
+ 405 0170 85B5      		in r24,69-32
+ 406 0172 8E7F      		andi r24,lo8(-2)
+ 407 0174 85BD      		out 69-32,r24
+  73:Blue_Rotary-v3.c ****         counter = 0; // clear out the dialed number
+ 408               		.loc 1 73 0
+ 409 0176 1092 0000 		sts counter+1,__zero_reg__
+ 410 017a 1092 0000 		sts counter,__zero_reg__
+  74:Blue_Rotary-v3.c ****         LED_ON();
+ 411               		.loc 1 74 0
+ 412 017e 4598      		cbi 40-32,5
+ 413               	.L9:
+  75:Blue_Rotary-v3.c ****     }
+  76:Blue_Rotary-v3.c ****     sei();
+ 414               		.loc 1 76 0
+ 415               	/* #APP */
+ 416               	 ;  76 "Blue_Rotary-v3.c" 1
+ 417 0180 7894      		sei
+ 418               	 ;  0 "" 2
+  77:Blue_Rotary-v3.c ****     sleep_enable();
+ 419               		.loc 1 77 0
+ 420               	/* #NOAPP */
+ 421 0182 83B7      		in r24,83-32
+ 422 0184 8160      		ori r24,lo8(1)
+ 423 0186 83BF      		out 83-32,r24
+ 424               	/* epilogue start */
+  78:Blue_Rotary-v3.c **** }
+ 425               		.loc 1 78 0
+ 426 0188 BF91      		pop r27
+ 427 018a AF91      		pop r26
+ 428 018c 9F91      		pop r25
+ 429 018e 8F91      		pop r24
+ 430 0190 0F90      		pop r0
+ 431 0192 0FBE      		out __SREG__,r0
+ 432 0194 0F90      		pop r0
+ 433 0196 1F90      		pop r1
+ 434 0198 1895      		reti
+ 435               	.L10:
+  68:Blue_Rotary-v3.c ****         LED_OFF();
+ 436               		.loc 1 68 0
+ 437 019a 459A      		sbi 40-32,5
+  69:Blue_Rotary-v3.c ****         TCCR0B |= (1<<CS00); // turn on dial tone
+ 438               		.loc 1 69 0
+ 439 019c 85B5      		in r24,69-32
+ 440 019e 8160      		ori r24,lo8(1)
+ 441 01a0 85BD      		out 69-32,r24
+ 442 01a2 00C0      		rjmp .L9
+ 443               		.cfi_endproc
+ 444               	.LFE12:
+ 446               	.global	__vector_5
+ 448               	__vector_5:
+ 449               	.LFB13:
+  79:Blue_Rotary-v3.c **** 
+  80:Blue_Rotary-v3.c **** ISR(PCINT2_vect) // ROTARY (or EROTARY)
+  81:Blue_Rotary-v3.c **** {
+ 450               		.loc 1 81 0
+ 451               		.cfi_startproc
+ 452 01a4 1F92      		push r1
+ 453               	.LCFI27:
+ 454               		.cfi_def_cfa_offset 3
+ 455               		.cfi_offset 1, -2
+ 456 01a6 0F92      		push r0
+ 457               	.LCFI28:
+ 458               		.cfi_def_cfa_offset 4
+ 459               		.cfi_offset 0, -3
+ 460 01a8 0FB6      		in r0,__SREG__
+ 461 01aa 0F92      		push r0
+ 462 01ac 1124      		clr __zero_reg__
+ 463 01ae 0F93      		push r16
+ 464               	.LCFI29:
+ 465               		.cfi_def_cfa_offset 5
+ 466               		.cfi_offset 16, -4
+ 467 01b0 1F93      		push r17
+ 468               	.LCFI30:
+ 469               		.cfi_def_cfa_offset 6
+ 470               		.cfi_offset 17, -5
+ 471 01b2 2F93      		push r18
+ 472               	.LCFI31:
+ 473               		.cfi_def_cfa_offset 7
+ 474               		.cfi_offset 18, -6
+ 475 01b4 3F93      		push r19
+ 476               	.LCFI32:
+ 477               		.cfi_def_cfa_offset 8
+ 478               		.cfi_offset 19, -7
+ 479 01b6 4F93      		push r20
+ 480               	.LCFI33:
+ 481               		.cfi_def_cfa_offset 9
+ 482               		.cfi_offset 20, -8
+ 483 01b8 8F93      		push r24
+ 484               	.LCFI34:
+ 485               		.cfi_def_cfa_offset 10
+ 486               		.cfi_offset 24, -9
+ 487 01ba 9F93      		push r25
+ 488               	.LCFI35:
+ 489               		.cfi_def_cfa_offset 11
+ 490               		.cfi_offset 25, -10
+ 491 01bc EF93      		push r30
+ 492               	.LCFI36:
+ 493               		.cfi_def_cfa_offset 12
+ 494               		.cfi_offset 30, -11
+ 495 01be FF93      		push r31
+ 496               	.LCFI37:
+ 497               		.cfi_def_cfa_offset 13
+ 498               		.cfi_offset 31, -12
+ 499               	/* prologue: Signal */
+ 500               	/* frame size = 0 */
+ 501               	/* stack size = 12 */
+ 502               	.L__stack_usage = 12
+  82:Blue_Rotary-v3.c ****     cli();
+ 503               		.loc 1 82 0
+ 504               	/* #APP */
+ 505               	 ;  82 "Blue_Rotary-v3.c" 1
+ 506 01c0 F894      		cli
+ 507               	 ;  0 "" 2
+  83:Blue_Rotary-v3.c ****     if(PIND & (1<<ROTARY)){
+ 508               		.loc 1 83 0
+ 509               	/* #NOAPP */
+ 510 01c2 4C99      		sbic 41-32,4
+ 511 01c4 00C0      		rjmp .L19
+ 512               	.L12:
+  84:Blue_Rotary-v3.c ****         rotary_high = 1;
+  85:Blue_Rotary-v3.c ****         _delay_ms(20);
+  86:Blue_Rotary-v3.c ****     }
+  87:Blue_Rotary-v3.c ****     if ((PIND & (1<<ROTARY)) != (1 << ROTARY)){
+ 513               		.loc 1 87 0
+ 514 01c6 4C9B      		sbis 41-32,4
+ 515 01c8 00C0      		rjmp .L20
+ 516               	.L13:
+  88:Blue_Rotary-v3.c ****         _delay_ms(20);
+  89:Blue_Rotary-v3.c ****         TCCR0B &= ~(1<<CS00); // turn off dial tone
+  90:Blue_Rotary-v3.c ****         if(rotary_high == 1){
+  91:Blue_Rotary-v3.c ****             rotary_high = 0;
+  92:Blue_Rotary-v3.c ****             dialed_number++;
+  93:Blue_Rotary-v3.c ****         }
+  94:Blue_Rotary-v3.c ****     }
+  95:Blue_Rotary-v3.c ****     if (PIND & (1<<EROTARY)){
+ 517               		.loc 1 95 0
+ 518 01ca 4B9B      		sbis 41-32,3
+ 519 01cc 00C0      		rjmp .L14
+  96:Blue_Rotary-v3.c ****         dialed_number--;
+ 520               		.loc 1 96 0
+ 521 01ce 8091 0000 		lds r24,dialed_number
+ 522 01d2 9091 0000 		lds r25,dialed_number+1
+ 523 01d6 0197      		sbiw r24,1
+ 524 01d8 9093 0000 		sts dialed_number+1,r25
+ 525 01dc 8093 0000 		sts dialed_number,r24
+  97:Blue_Rotary-v3.c ****         if(counter < MAX_NUMBER_LENGTH){
+ 526               		.loc 1 97 0
+ 527 01e0 2091 0000 		lds r18,counter
+ 528 01e4 3091 0000 		lds r19,counter+1
+ 529 01e8 2431      		cpi r18,20
+ 530 01ea 3105      		cpc r19,__zero_reg__
+ 531 01ec 04F0      		brlt .L21
+ 532               	.L15:
+ 533               	.LVL7:
+ 534               	.LBB17:
+  98:Blue_Rotary-v3.c ****         phone_number[counter++] = dialed_number;
+  99:Blue_Rotary-v3.c ****         }
+ 100:Blue_Rotary-v3.c ****         else {
+ 101:Blue_Rotary-v3.c ****             // error_ring();
+ 102:Blue_Rotary-v3.c ****         }
+ 103:Blue_Rotary-v3.c ****         for(char i = 0; i < dialed_number; i++){
+ 535               		.loc 1 103 0 discriminator 1
+ 536 01ee 1816      		cp __zero_reg__,r24
+ 537 01f0 1906      		cpc __zero_reg__,r25
+ 538 01f2 04F4      		brge .L16
+ 539               		.loc 1 103 0 is_stmt 0
+ 540 01f4 40E0      		ldi r20,lo8(0)
+ 541               	.LVL8:
+ 542               	.L17:
+ 104:Blue_Rotary-v3.c ****             LED_ON();
+ 543               		.loc 1 104 0 is_stmt 1 discriminator 2
+ 544 01f6 4598      		cbi 40-32,5
+ 545               	.LVL9:
+ 546               	.LBB18:
+ 547               	.LBB19:
+ 548               		.loc 2 164 0 discriminator 2
+ 549 01f8 0FEF      		 ldi r16,lo8(319999)
+ 550 01fa 11EE      	    ldi r17,hi8(319999)
+ 551 01fc 24E0      	    ldi r18,hlo8(319999)
+ 552 01fe 0150      	    1:subi r16,1
+ 553 0200 1040      	    sbci r17,0
+ 554 0202 2040      	    sbci r18,0
+ 555 0204 01F4      	    brne 1b
+ 556 0206 00C0      		rjmp .
+ 557 0208 0000      		nop
+ 558               	.LBE19:
+ 559               	.LBE18:
+ 105:Blue_Rotary-v3.c ****             _delay_ms(200);
+ 106:Blue_Rotary-v3.c ****             LED_OFF();
+ 560               		.loc 1 106 0 discriminator 2
+ 561 020a 459A      		sbi 40-32,5
+ 562               	.LVL10:
+ 563               	.LBB20:
+ 564               	.LBB21:
+ 565               		.loc 2 164 0 discriminator 2
+ 566 020c 0FEF      		 ldi r16,lo8(319999)
+ 567 020e 11EE      	    ldi r17,hi8(319999)
+ 568 0210 24E0      	    ldi r18,hlo8(319999)
+ 569 0212 0150      	    1:subi r16,1
+ 570 0214 1040      	    sbci r17,0
+ 571 0216 2040      	    sbci r18,0
+ 572 0218 01F4      	    brne 1b
+ 573 021a 00C0      		rjmp .
+ 574 021c 0000      		nop
+ 575               	.LBE21:
+ 576               	.LBE20:
+ 103:Blue_Rotary-v3.c ****         for(char i = 0; i < dialed_number; i++){
+ 577               		.loc 1 103 0 discriminator 2
+ 578 021e 4F5F      		subi r20,lo8(-(1))
+ 579               	.LVL11:
+ 580 0220 242F      		mov r18,r20
+ 581 0222 30E0      		ldi r19,lo8(0)
+ 582 0224 2817      		cp r18,r24
+ 583 0226 3907      		cpc r19,r25
+ 584 0228 04F0      		brlt .L17
+ 585               	.LVL12:
+ 586               	.L16:
+ 587               	.LBE17:
+ 107:Blue_Rotary-v3.c ****             _delay_ms(200);
+ 108:Blue_Rotary-v3.c ****         }
+ 109:Blue_Rotary-v3.c ****         dialed_number = 0;
+ 588               		.loc 1 109 0
+ 589 022a 1092 0000 		sts dialed_number+1,__zero_reg__
+ 590 022e 1092 0000 		sts dialed_number,__zero_reg__
+ 591               	.L14:
+ 110:Blue_Rotary-v3.c ****     }
+ 111:Blue_Rotary-v3.c ****     PCMSK2 &= ~((1<<PCINT19)|(1<<PCINT20));
+ 592               		.loc 1 111 0
+ 593 0232 8091 6D00 		lds r24,109
+ 594 0236 877E      		andi r24,lo8(-25)
+ 595 0238 8093 6D00 		sts 109,r24
+ 112:Blue_Rotary-v3.c ****     sei();
+ 596               		.loc 1 112 0
+ 597               	/* #APP */
+ 598               	 ;  112 "Blue_Rotary-v3.c" 1
+ 599 023c 7894      		sei
+ 600               	 ;  0 "" 2
+ 113:Blue_Rotary-v3.c ****     PCMSK2 |= (1<<PCINT19)|(1<<PCINT20);
+ 601               		.loc 1 113 0
+ 602               	/* #NOAPP */
+ 603 023e 8091 6D00 		lds r24,109
+ 604 0242 8861      		ori r24,lo8(24)
+ 605 0244 8093 6D00 		sts 109,r24
+ 606               	/* epilogue start */
+ 114:Blue_Rotary-v3.c **** }
+ 607               		.loc 1 114 0
+ 608 0248 FF91      		pop r31
+ 609 024a EF91      		pop r30
+ 610 024c 9F91      		pop r25
+ 611 024e 8F91      		pop r24
+ 612 0250 4F91      		pop r20
+ 613 0252 3F91      		pop r19
+ 614 0254 2F91      		pop r18
+ 615 0256 1F91      		pop r17
+ 616 0258 0F91      		pop r16
+ 617 025a 0F90      		pop r0
+ 618 025c 0FBE      		out __SREG__,r0
+ 619 025e 0F90      		pop r0
+ 620 0260 1F90      		pop r1
+ 621 0262 1895      		reti
+ 622               	.L21:
+  98:Blue_Rotary-v3.c ****         phone_number[counter++] = dialed_number;
+ 623               		.loc 1 98 0
+ 624 0264 F901      		movw r30,r18
+ 625 0266 E050      		subi r30,lo8(-(phone_number))
+ 626 0268 F040      		sbci r31,hi8(-(phone_number))
+ 627 026a 8083      		st Z,r24
+ 628 026c 2F5F      		subi r18,lo8(-(1))
+ 629 026e 3F4F      		sbci r19,hi8(-(1))
+ 630 0270 3093 0000 		sts counter+1,r19
+ 631 0274 2093 0000 		sts counter,r18
+ 632 0278 00C0      		rjmp .L15
+ 633               	.L20:
+ 634               	.LVL13:
+ 635               	.LBB22:
+ 636               	.LBB23:
+ 637               		.loc 2 164 0
+ 638 027a 8FE3      		 ldi r24,lo8(-25537)
+ 639 027c 9CE9      	    ldi r25,hi8(-25537)
+ 640 027e 0197      	    1:sbiw r24,1
+ 641 0280 01F4      	    brne 1b
+ 642 0282 00C0      		rjmp .
+ 643 0284 0000      		nop
+ 644               	.LBE23:
+ 645               	.LBE22:
+  89:Blue_Rotary-v3.c ****         TCCR0B &= ~(1<<CS00); // turn off dial tone
+ 646               		.loc 1 89 0
+ 647 0286 85B5      		in r24,69-32
+ 648 0288 8E7F      		andi r24,lo8(-2)
+ 649 028a 85BD      		out 69-32,r24
+  90:Blue_Rotary-v3.c ****         if(rotary_high == 1){
+ 650               		.loc 1 90 0
+ 651 028c 8091 0000 		lds r24,rotary_high
+ 652 0290 8130      		cpi r24,lo8(1)
+ 653 0292 01F0      		breq .+2
+ 654 0294 00C0      		rjmp .L13
+  91:Blue_Rotary-v3.c ****             rotary_high = 0;
+ 655               		.loc 1 91 0
+ 656 0296 1092 0000 		sts rotary_high,__zero_reg__
+  92:Blue_Rotary-v3.c ****             dialed_number++;
+ 657               		.loc 1 92 0
+ 658 029a 8091 0000 		lds r24,dialed_number
+ 659 029e 9091 0000 		lds r25,dialed_number+1
+ 660 02a2 0196      		adiw r24,1
+ 661 02a4 9093 0000 		sts dialed_number+1,r25
+ 662 02a8 8093 0000 		sts dialed_number,r24
+ 663 02ac 00C0      		rjmp .L13
+ 664               	.LVL14:
+ 665               	.L19:
+  84:Blue_Rotary-v3.c ****         rotary_high = 1;
+ 666               		.loc 1 84 0
+ 667 02ae 81E0      		ldi r24,lo8(1)
+ 668 02b0 8093 0000 		sts rotary_high,r24
+ 669               	.LVL15:
+ 670               	.LBB24:
+ 671               	.LBB25:
+ 672               		.loc 2 164 0
+ 673 02b4 8FE3      		 ldi r24,lo8(-25537)
+ 674 02b6 9CE9      	    ldi r25,hi8(-25537)
+ 675 02b8 0197      	    1:sbiw r24,1
+ 676 02ba 01F4      	    brne 1b
+ 677 02bc 00C0      		rjmp .
+ 678 02be 0000      		nop
+ 679 02c0 00C0      		rjmp .L12
+ 680               	.LBE25:
+ 681               	.LBE24:
+ 682               		.cfi_endproc
+ 683               	.LFE13:
+ 685               	.global	ioinit
+ 687               	ioinit:
+ 688               	.LFB14:
+ 115:Blue_Rotary-v3.c **** 
+ 116:Blue_Rotary-v3.c **** //Function: ioinit
+ 117:Blue_Rotary-v3.c **** //Purpose:	Initialize AVR I/O, UART and Interrupts
+ 118:Blue_Rotary-v3.c **** //Inputs:	None
+ 119:Blue_Rotary-v3.c **** //Outputs:	None
+ 120:Blue_Rotary-v3.c **** void ioinit(void)
+ 121:Blue_Rotary-v3.c **** {
+ 689               		.loc 1 121 0
+ 690               		.cfi_startproc
+ 691               	/* prologue: function */
+ 692               	/* frame size = 0 */
+ 693               	/* stack size = 0 */
+ 694               	.L__stack_usage = 0
+ 122:Blue_Rotary-v3.c ****     //1 = output, 0 = input
+ 123:Blue_Rotary-v3.c **** 	DDRB = (1<<CS) | (1<<SCK) | (1<<MOSI);										//Define Port B GPIO Outputs
+ 695               		.loc 1 123 0
+ 696 02c2 8CE2      		ldi r24,lo8(44)
+ 697 02c4 84B9      		out 36-32,r24
+ 124:Blue_Rotary-v3.c ****     PORTB = (1<<MISO);
+ 698               		.loc 1 124 0
+ 699 02c6 80E1      		ldi r24,lo8(16)
+ 700 02c8 85B9      		out 37-32,r24
+ 125:Blue_Rotary-v3.c **** 	DDRB &= ~(1<<MISO);
+ 701               		.loc 1 125 0
+ 702 02ca 2498      		cbi 36-32,4
+ 126:Blue_Rotary-v3.c ****     
+ 127:Blue_Rotary-v3.c **** 	DDRC = (1<<BT_EN) | (1<<RING_PWR) | (1<<RING1) | (1<<RING2) |  (1<<PSTAT); 	//Define Port C Output
+ 703               		.loc 1 127 0
+ 704 02cc 8EE3      		ldi r24,lo8(62)
+ 705 02ce 87B9      		out 39-32,r24
+ 128:Blue_Rotary-v3.c **** 	PORTC = (1<<HOOK);
+ 706               		.loc 1 128 0
+ 707 02d0 81E0      		ldi r24,lo8(1)
+ 708 02d2 88B9      		out 40-32,r24
+ 129:Blue_Rotary-v3.c **** 	DDRC &= ~(1<<HOOK);															//Define Port C Inputs
+ 709               		.loc 1 129 0
+ 710 02d4 3898      		cbi 39-32,0
+ 130:Blue_Rotary-v3.c ****     
+ 131:Blue_Rotary-v3.c **** 	DDRD = (1<<DT1) | (1<<DT2) | (1<< BT_RES);										//Define Port D Outputs
+ 711               		.loc 1 131 0
+ 712 02d6 84EC      		ldi r24,lo8(-60)
+ 713 02d8 8AB9      		out 42-32,r24
+ 132:Blue_Rotary-v3.c **** 	PORTD = (1<<ROTARY) | (1<<EROTARY);	
+ 714               		.loc 1 132 0
+ 715 02da 88E1      		ldi r24,lo8(24)
+ 716 02dc 8BB9      		out 43-32,r24
+ 133:Blue_Rotary-v3.c ****     DDRD &= ~((1<<ROTARY)|(1<<EROTARY));								//Define Port D inputs
+ 717               		.loc 1 133 0
+ 718 02de 8AB1      		in r24,42-32
+ 719 02e0 877E      		andi r24,lo8(-25)
+ 720 02e2 8AB9      		out 42-32,r24
+ 134:Blue_Rotary-v3.c ****     
+ 135:Blue_Rotary-v3.c ****     //SPI Bus setup
+ 136:Blue_Rotary-v3.c **** 	//SPCR = (1<<SPE)|(1<<MSTR)|(1<<CPHA)|(1<<CPOL)|(1<<SPR0);	//Might need to change the phase
+ 137:Blue_Rotary-v3.c **** 
+ 138:Blue_Rotary-v3.c ****     uart_init(BAUD_RATE);
+ 721               		.loc 1 138 0
+ 722 02e4 80E0      		ldi r24,lo8(-7936)
+ 723 02e6 91EE      		ldi r25,hi8(-7936)
+ 724 02e8 0E94 0000 		call uart_init
+ 139:Blue_Rotary-v3.c ****     
+ 140:Blue_Rotary-v3.c ****     cli();
+ 725               		.loc 1 140 0
+ 726               	/* #APP */
+ 727               	 ;  140 "Blue_Rotary-v3.c" 1
+ 728 02ec F894      		cli
+ 729               	 ;  0 "" 2
+ 141:Blue_Rotary-v3.c ****     
+ 142:Blue_Rotary-v3.c ****     
+ 143:Blue_Rotary-v3.c **** 	//Init timer for dial tone
+ 144:Blue_Rotary-v3.c ****     ASSR = 0;
+ 730               		.loc 1 144 0
+ 731               	/* #NOAPP */
+ 732 02ee 1092 B600 		sts 182,__zero_reg__
+ 145:Blue_Rotary-v3.c ****     TCCR2A=(1<<WGM21)|(1<<WGM20);
+ 733               		.loc 1 145 0
+ 734 02f2 83E0      		ldi r24,lo8(3)
+ 735 02f4 8093 B000 		sts 176,r24
+ 146:Blue_Rotary-v3.c ****     //    TCCR0B=(1<<CS00); // this turns on the timer now!
+ 147:Blue_Rotary-v3.c ****     TIMSK2 = (1<<OCIE2A)|(1<<TOIE2)|(1<<OCIE2B);
+ 736               		.loc 1 147 0
+ 737 02f8 87E0      		ldi r24,lo8(7)
+ 738 02fa 8093 7000 		sts 112,r24
+ 148:Blue_Rotary-v3.c **** 	OCR2A=(0x00);		//Load Compare Register with Delay
+ 739               		.loc 1 148 0
+ 740 02fe 1092 B300 		sts 179,__zero_reg__
+ 149:Blue_Rotary-v3.c ****     OCR2B=(0x00);
+ 741               		.loc 1 149 0
+ 742 0302 1092 B400 		sts 180,__zero_reg__
+ 150:Blue_Rotary-v3.c ****     PCICR |= (1<<PCIE0)|(1<<PCIE1)|(1<<PCIE2);
+ 743               		.loc 1 150 0
+ 744 0306 E8E6      		ldi r30,lo8(104)
+ 745 0308 F0E0      		ldi r31,hi8(104)
+ 746 030a 8081      		ld r24,Z
+ 747 030c 8760      		ori r24,lo8(7)
+ 748 030e 8083      		st Z,r24
+ 151:Blue_Rotary-v3.c ****     PCMSK1 |= (1<<PCINT8);
+ 749               		.loc 1 151 0
+ 750 0310 ECE6      		ldi r30,lo8(108)
+ 751 0312 F0E0      		ldi r31,hi8(108)
+ 752 0314 8081      		ld r24,Z
+ 753 0316 8160      		ori r24,lo8(1)
+ 754 0318 8083      		st Z,r24
+ 152:Blue_Rotary-v3.c ****     PCMSK2 |= (1<<PCINT19)|(1<<PCINT20);
+ 755               		.loc 1 152 0
+ 756 031a EDE6      		ldi r30,lo8(109)
+ 757 031c F0E0      		ldi r31,hi8(109)
+ 758 031e 8081      		ld r24,Z
+ 759 0320 8861      		ori r24,lo8(24)
+ 760 0322 8083      		st Z,r24
+ 761               	/* epilogue start */
+ 153:Blue_Rotary-v3.c **** }
+ 762               		.loc 1 153 0
+ 763 0324 0895      		ret
+ 764               		.cfi_endproc
+ 765               	.LFE14:
+ 767               		.data
+ 768               	.LC0:
+ 769 0000 2000      		.string	" "
+ 770               		.text
+ 771               	.global	interpret_message
+ 773               	interpret_message:
+ 774               	.LFB15:
+ 154:Blue_Rotary-v3.c **** 
+ 155:Blue_Rotary-v3.c **** void interpret_message(char *message)
+ 156:Blue_Rotary-v3.c **** {
+ 775               		.loc 1 156 0
+ 776               		.cfi_startproc
+ 777               	.LVL16:
+ 778 0326 0F93      		push r16
+ 779               	.LCFI38:
+ 780               		.cfi_def_cfa_offset 3
+ 781               		.cfi_offset 16, -2
+ 782 0328 1F93      		push r17
+ 783               	.LCFI39:
+ 784               		.cfi_def_cfa_offset 4
+ 785               		.cfi_offset 17, -3
+ 786 032a CF93      		push r28
+ 787               	.LCFI40:
+ 788               		.cfi_def_cfa_offset 5
+ 789               		.cfi_offset 28, -4
+ 790 032c DF93      		push r29
+ 791               	.LCFI41:
+ 792               		.cfi_def_cfa_offset 6
+ 793               		.cfi_offset 29, -5
+ 794 032e CDB7      		in r28,__SP_L__
+ 795 0330 DEB7      		in r29,__SP_H__
+ 796 0332 C050      		subi r28,lo8(-(-256))
+ 797 0334 D140      		sbci r29,hi8(-(-256))
+ 798               	.LCFI42:
+ 799               		.cfi_def_cfa 28, 262
+ 800 0336 0FB6      		in __tmp_reg__,__SREG__
+ 801 0338 F894      		cli
+ 802 033a DEBF      		out __SP_H__,r29
+ 803 033c 0FBE      		out __SREG__,__tmp_reg__
+ 804 033e CDBF      		out __SP_L__,r28
+ 805               	/* prologue: function */
+ 806               	/* frame size = 256 */
+ 807               	/* stack size = 260 */
+ 808               	.L__stack_usage = 260
+ 157:Blue_Rotary-v3.c **** 	char words[8][32];
+ 158:Blue_Rotary-v3.c **** 	char *p = strtok(message, " ");
+ 809               		.loc 1 158 0
+ 810 0340 60E0      		ldi r22,lo8(.LC0)
+ 811 0342 70E0      		ldi r23,hi8(.LC0)
+ 812 0344 0E94 0000 		call strtok
+ 813               	.LVL17:
+ 814 0348 BC01      		movw r22,r24
+ 815               	.LVL18:
+ 159:Blue_Rotary-v3.c **** 	unsigned short i=0;
+ 160:Blue_Rotary-v3.c **** 	while (*p)
+ 816               		.loc 1 160 0
+ 817 034a FC01      		movw r30,r24
+ 818 034c 8081      		ld r24,Z
+ 819               	.LVL19:
+ 820 034e 8823      		tst r24
+ 821 0350 01F0      		breq .L23
+ 822 0352 8E01      		movw r16,r28
+ 823 0354 0F5F      		subi r16,lo8(-(1))
+ 824 0356 1F4F      		sbci r17,hi8(-(1))
+ 825               	.LVL20:
+ 826               	.L25:
+ 161:Blue_Rotary-v3.c **** 	{
+ 162:Blue_Rotary-v3.c **** 		strcpy(words[i++], p);
+ 827               		.loc 1 162 0
+ 828 0358 C801      		movw r24,r16
+ 829 035a 0E94 0000 		call strcpy
+ 830               	.LVL21:
+ 163:Blue_Rotary-v3.c **** 		p = strtok(NULL, " ");
+ 831               		.loc 1 163 0
+ 832 035e 80E0      		ldi r24,lo8(0)
+ 833 0360 90E0      		ldi r25,hi8(0)
+ 834 0362 60E0      		ldi r22,lo8(.LC0)
+ 835 0364 70E0      		ldi r23,hi8(.LC0)
+ 836 0366 0E94 0000 		call strtok
+ 837 036a BC01      		movw r22,r24
+ 838               	.LVL22:
+ 839 036c 005E      		subi r16,lo8(-(32))
+ 840 036e 1F4F      		sbci r17,hi8(-(32))
+ 160:Blue_Rotary-v3.c **** 	while (*p)
+ 841               		.loc 1 160 0
+ 842 0370 FC01      		movw r30,r24
+ 843 0372 8081      		ld r24,Z
+ 844               	.LVL23:
+ 845 0374 8823      		tst r24
+ 846 0376 01F4      		brne .L25
+ 847               	.L23:
+ 848               	/* epilogue start */
+ 164:Blue_Rotary-v3.c **** 	}
+ 165:Blue_Rotary-v3.c **** 	if(strcmp(words[0], "HFP") == 0)
+ 166:Blue_Rotary-v3.c **** 	{
+ 167:Blue_Rotary-v3.c **** 		
+ 168:Blue_Rotary-v3.c **** 	}
+ 169:Blue_Rotary-v3.c **** 	if(strcmp(words[0], "RING") == 0)
+ 170:Blue_Rotary-v3.c **** 	{
+ 171:Blue_Rotary-v3.c **** 		
+ 172:Blue_Rotary-v3.c **** 	}
+ 173:Blue_Rotary-v3.c **** 	if(strcmp(words[0], "SCO") == 0)
+ 174:Blue_Rotary-v3.c **** 	{
+ 175:Blue_Rotary-v3.c **** 		
+ 176:Blue_Rotary-v3.c **** 	}
+ 177:Blue_Rotary-v3.c **** }
+ 849               		.loc 1 177 0
+ 850 0378 C050      		subi r28,lo8(-(256))
+ 851 037a DF4F      		sbci r29,hi8(-(256))
+ 852 037c 0FB6      		in __tmp_reg__,__SREG__
+ 853 037e F894      		cli
+ 854 0380 DEBF      		out __SP_H__,r29
+ 855 0382 0FBE      		out __SREG__,__tmp_reg__
+ 856 0384 CDBF      		out __SP_L__,r28
+ 857 0386 DF91      		pop r29
+ 858 0388 CF91      		pop r28
+ 859 038a 1F91      		pop r17
+ 860 038c 0F91      		pop r16
+ 861 038e 0895      		ret
+ 862               		.cfi_endproc
+ 863               	.LFE15:
+ 865               		.section	.text.startup,"ax",@progbits
+ 866               	.global	main
+ 868               	main:
+ 869               	.LFB16:
+ 178:Blue_Rotary-v3.c **** 
+ 179:Blue_Rotary-v3.c **** int main(void){
+ 870               		.loc 1 179 0
+ 871               		.cfi_startproc
+ 872 0000 CF93      		push r28
+ 873               	.LCFI43:
+ 874               		.cfi_def_cfa_offset 3
+ 875               		.cfi_offset 28, -2
+ 876 0002 DF93      		push r29
+ 877               	.LCFI44:
+ 878               		.cfi_def_cfa_offset 4
+ 879               		.cfi_offset 29, -3
+ 880 0004 CDB7      		in r28,__SP_L__
+ 881 0006 DEB7      		in r29,__SP_H__
+ 882 0008 C058      		subi r28,lo8(-(-128))
+ 883 000a D040      		sbci r29,hi8(-(-128))
+ 884               	.LCFI45:
+ 885               		.cfi_def_cfa 28, 132
+ 886 000c 0FB6      		in __tmp_reg__,__SREG__
+ 887 000e F894      		cli
+ 888 0010 DEBF      		out __SP_H__,r29
+ 889 0012 0FBE      		out __SREG__,__tmp_reg__
+ 890 0014 CDBF      		out __SP_L__,r28
+ 891               	/* prologue: function */
+ 892               	/* frame size = 128 */
+ 893               	/* stack size = 130 */
+ 894               	.L__stack_usage = 130
+ 180:Blue_Rotary-v3.c ****     char message[MAX_MESSAGE_LENGTH];	//Buffer for UART messages
+ 181:Blue_Rotary-v3.c ****     int uart_recv;
+ 182:Blue_Rotary-v3.c ****     char uart_err;
+ 183:Blue_Rotary-v3.c ****     char uart_char;
+ 184:Blue_Rotary-v3.c ****     ioinit();
+ 895               		.loc 1 184 0
+ 896 0016 0E94 0000 		call ioinit
+ 185:Blue_Rotary-v3.c ****     sleep_enable();
+ 897               		.loc 1 185 0
+ 898 001a 83B7      		in r24,83-32
+ 899 001c 8160      		ori r24,lo8(1)
+ 900 001e 83BF      		out 83-32,r24
+ 186:Blue_Rotary-v3.c ****     set_sleep_mode(SLEEP_MODE_IDLE);
+ 901               		.loc 1 186 0
+ 902 0020 83B7      		in r24,83-32
+ 903 0022 817F      		andi r24,lo8(-15)
+ 904 0024 83BF      		out 83-32,r24
+ 187:Blue_Rotary-v3.c ****     sei();
+ 905               		.loc 1 187 0
+ 906               	/* #APP */
+ 907               	 ;  187 "Blue_Rotary-v3.c" 1
+ 908 0026 7894      		sei
+ 909               	 ;  0 "" 2
+ 188:Blue_Rotary-v3.c ****     message_index = 0;
+ 910               		.loc 1 188 0
+ 911               	/* #NOAPP */
+ 912 0028 1092 0000 		sts message_index+1,__zero_reg__
+ 913 002c 1092 0000 		sts message_index,__zero_reg__
+ 914 0030 00C0      		rjmp .L30
+ 915               	.L29:
+ 189:Blue_Rotary-v3.c ****     while(1){
+ 190:Blue_Rotary-v3.c ****         uart_recv = uart_getc();
+ 191:Blue_Rotary-v3.c ****         uart_err = (uart_recv & 0xff00) >> 8;
+ 192:Blue_Rotary-v3.c ****         uart_char = uart_recv & 0x00ff;
+ 193:Blue_Rotary-v3.c ****         if(!(uart_err) && message_index < MAX_MESSAGE_LENGTH && uart_char != '\r')
+ 194:Blue_Rotary-v3.c ****         {
+ 195:Blue_Rotary-v3.c ****             message[message_index++] = uart_char;
+ 196:Blue_Rotary-v3.c ****         }
+ 197:Blue_Rotary-v3.c ****         if(uart_char == '\n')
+ 198:Blue_Rotary-v3.c ****         {
+ 199:Blue_Rotary-v3.c ****             message[message_index-1]='\0';
+ 200:Blue_Rotary-v3.c ****             message_index = 0;
+ 201:Blue_Rotary-v3.c ****             interpret_message(message);
+ 202:Blue_Rotary-v3.c ****         } 
+ 203:Blue_Rotary-v3.c ****         sleep_cpu(); // we wake up when we receive a character, right?
+ 916               		.loc 1 203 0
+ 917               	/* #APP */
+ 918               	 ;  203 "Blue_Rotary-v3.c" 1
+ 919 0032 8895      		sleep
+ 920               		
+ 921               	 ;  0 "" 2
+ 922               	.LVL24:
+ 923               	/* #NOAPP */
+ 924               	.L30:
+ 190:Blue_Rotary-v3.c ****         uart_recv = uart_getc();
+ 925               		.loc 1 190 0
+ 926 0034 0E94 0000 		call uart_getc
+ 927               	.LVL25:
+ 193:Blue_Rotary-v3.c ****         if(!(uart_err) && message_index < MAX_MESSAGE_LENGTH && uart_char != '\r')
+ 928               		.loc 1 193 0
+ 929 0038 9923      		tst r25
+ 930 003a 01F4      		brne .L28
+ 193:Blue_Rotary-v3.c ****         if(!(uart_err) && message_index < MAX_MESSAGE_LENGTH && uart_char != '\r')
+ 931               		.loc 1 193 0 is_stmt 0 discriminator 1
+ 932 003c 2091 0000 		lds r18,message_index
+ 933 0040 3091 0000 		lds r19,message_index+1
+ 934 0044 2038      		cpi r18,128
+ 935 0046 3105      		cpc r19,__zero_reg__
+ 936 0048 04F4      		brge .L28
+ 937 004a 8D30      		cpi r24,lo8(13)
+ 938 004c 01F0      		breq .L29
+ 195:Blue_Rotary-v3.c ****             message[message_index++] = uart_char;
+ 939               		.loc 1 195 0 is_stmt 1
+ 940 004e 2091 0000 		lds r18,message_index
+ 941 0052 3091 0000 		lds r19,message_index+1
+ 942 0056 E1E0      		ldi r30,lo8(1)
+ 943 0058 F0E0      		ldi r31,hi8(1)
+ 944 005a EC0F      		add r30,r28
+ 945 005c FD1F      		adc r31,r29
+ 946 005e E20F      		add r30,r18
+ 947 0060 F31F      		adc r31,r19
+ 948 0062 8083      		st Z,r24
+ 949 0064 2F5F      		subi r18,lo8(-(1))
+ 950 0066 3F4F      		sbci r19,hi8(-(1))
+ 951 0068 3093 0000 		sts message_index+1,r19
+ 952 006c 2093 0000 		sts message_index,r18
+ 953               	.L28:
+ 197:Blue_Rotary-v3.c ****         if(uart_char == '\n')
+ 954               		.loc 1 197 0
+ 955 0070 8A30      		cpi r24,lo8(10)
+ 956 0072 01F4      		brne .L29
+ 199:Blue_Rotary-v3.c ****             message[message_index-1]='\0';
+ 957               		.loc 1 199 0
+ 958 0074 E091 0000 		lds r30,message_index
+ 959 0078 F091 0000 		lds r31,message_index+1
+ 960 007c EC0F      		add r30,r28
+ 961 007e FD1F      		adc r31,r29
+ 962 0080 1082      		st Z,__zero_reg__
+ 200:Blue_Rotary-v3.c ****             message_index = 0;
+ 963               		.loc 1 200 0
+ 964 0082 1092 0000 		sts message_index+1,__zero_reg__
+ 965 0086 1092 0000 		sts message_index,__zero_reg__
+ 201:Blue_Rotary-v3.c ****             interpret_message(message);
+ 966               		.loc 1 201 0
+ 967 008a CE01      		movw r24,r28
+ 968               	.LVL26:
+ 969 008c 0196      		adiw r24,1
+ 970 008e 0E94 0000 		call interpret_message
+ 971               	.LVL27:
+ 972 0092 00C0      		rjmp .L29
+ 973               		.cfi_endproc
+ 974               	.LFE16:
+ 976               	.global	location_440
+ 977               	.global	location_440
+ 978               		.section .bss
+ 981               	location_440:
+ 982 0000 0000      		.skip 2,0
+ 983               	.global	location_350
+ 984               	.global	location_350
+ 987               	location_350:
+ 988 0002 0000      		.skip 2,0
+ 989               	.global	connected
+ 990               	.global	connected
+ 993               	connected:
+ 994 0004 0000      		.skip 2,0
+ 995               		.comm rotary_high,1,1
+ 996               		.comm phone_number,20,1
+ 997               		.comm temp,1,1
+ 998               		.comm number_length,1,1
+ 999               	.global	get_number_timeout
+ 1000               	.global	get_number_timeout
+ 1003               	get_number_timeout:
+ 1004 0006 0000      		.skip 2,0
+ 1005               		.comm counter,2,1
+ 1006               		.comm dialed_number,2,1
+ 1007               	.global	message_index
+ 1008               	.global	message_index
+ 1011               	message_index:
+ 1012 0008 0000      		.skip 2,0
+ 1013               		.comm ring_tone_flag,1,1
+ 1014               		.comm message_complete,1,1
+ 1015               	.global	sine_table
+ 1016               		.section	.progmem.data,"a",@progbits
+ 1019               	sine_table:
+ 1020 0000 80        		.byte	-128
+ 1021 0001 83        		.byte	-125
+ 1022 0002 86        		.byte	-122
+ 1023 0003 89        		.byte	-119
+ 1024 0004 8C        		.byte	-116
+ 1025 0005 8F        		.byte	-113
+ 1026 0006 92        		.byte	-110
+ 1027 0007 95        		.byte	-107
+ 1028 0008 98        		.byte	-104
+ 1029 0009 9C        		.byte	-100
+ 1030 000a 9F        		.byte	-97
+ 1031 000b A2        		.byte	-94
+ 1032 000c A5        		.byte	-91
+ 1033 000d A8        		.byte	-88
+ 1034 000e AB        		.byte	-85
+ 1035 000f AE        		.byte	-82
+ 1036 0010 B0        		.byte	-80
+ 1037 0011 B3        		.byte	-77
+ 1038 0012 B6        		.byte	-74
+ 1039 0013 B9        		.byte	-71
+ 1040 0014 BC        		.byte	-68
+ 1041 0015 BF        		.byte	-65
+ 1042 0016 C1        		.byte	-63
+ 1043 0017 C4        		.byte	-60
+ 1044 0018 C7        		.byte	-57
+ 1045 0019 C9        		.byte	-55
+ 1046 001a CC        		.byte	-52
+ 1047 001b CE        		.byte	-50
+ 1048 001c D1        		.byte	-47
+ 1049 001d D3        		.byte	-45
+ 1050 001e D5        		.byte	-43
+ 1051 001f D8        		.byte	-40
+ 1052 0020 DA        		.byte	-38
+ 1053 0021 DC        		.byte	-36
+ 1054 0022 DE        		.byte	-34
+ 1055 0023 E0        		.byte	-32
+ 1056 0024 E2        		.byte	-30
+ 1057 0025 E4        		.byte	-28
+ 1058 0026 E6        		.byte	-26
+ 1059 0027 E8        		.byte	-24
+ 1060 0028 EA        		.byte	-22
+ 1061 0029 EB        		.byte	-21
+ 1062 002a ED        		.byte	-19
+ 1063 002b EF        		.byte	-17
+ 1064 002c F0        		.byte	-16
+ 1065 002d F2        		.byte	-14
+ 1066 002e F3        		.byte	-13
+ 1067 002f F4        		.byte	-12
+ 1068 0030 F6        		.byte	-10
+ 1069 0031 F7        		.byte	-9
+ 1070 0032 F8        		.byte	-8
+ 1071 0033 F9        		.byte	-7
+ 1072 0034 FA        		.byte	-6
+ 1073 0035 FB        		.byte	-5
+ 1074 0036 FB        		.byte	-5
+ 1075 0037 FC        		.byte	-4
+ 1076 0038 FD        		.byte	-3
+ 1077 0039 FD        		.byte	-3
+ 1078 003a FE        		.byte	-2
+ 1079 003b FE        		.byte	-2
+ 1080 003c FE        		.byte	-2
+ 1081 003d FF        		.byte	-1
+ 1082 003e FF        		.byte	-1
+ 1083 003f FF        		.byte	-1
+ 1084 0040 FF        		.byte	-1
+ 1085 0041 FF        		.byte	-1
+ 1086 0042 FF        		.byte	-1
+ 1087 0043 FF        		.byte	-1
+ 1088 0044 FE        		.byte	-2
+ 1089 0045 FE        		.byte	-2
+ 1090 0046 FD        		.byte	-3
+ 1091 0047 FD        		.byte	-3
+ 1092 0048 FC        		.byte	-4
+ 1093 0049 FC        		.byte	-4
+ 1094 004a FB        		.byte	-5
+ 1095 004b FA        		.byte	-6
+ 1096 004c F9        		.byte	-7
+ 1097 004d F8        		.byte	-8
+ 1098 004e F7        		.byte	-9
+ 1099 004f F6        		.byte	-10
+ 1100 0050 F5        		.byte	-11
+ 1101 0051 F4        		.byte	-12
+ 1102 0052 F2        		.byte	-14
+ 1103 0053 F1        		.byte	-15
+ 1104 0054 EF        		.byte	-17
+ 1105 0055 EE        		.byte	-18
+ 1106 0056 EC        		.byte	-20
+ 1107 0057 EB        		.byte	-21
+ 1108 0058 E9        		.byte	-23
+ 1109 0059 E7        		.byte	-25
+ 1110 005a E5        		.byte	-27
+ 1111 005b E3        		.byte	-29
+ 1112 005c E1        		.byte	-31
+ 1113 005d DF        		.byte	-33
+ 1114 005e DD        		.byte	-35
+ 1115 005f DB        		.byte	-37
+ 1116 0060 D9        		.byte	-39
+ 1117 0061 D7        		.byte	-41
+ 1118 0062 D4        		.byte	-44
+ 1119 0063 D2        		.byte	-46
+ 1120 0064 CF        		.byte	-49
+ 1121 0065 CD        		.byte	-51
+ 1122 0066 CA        		.byte	-54
+ 1123 0067 C8        		.byte	-56
+ 1124 0068 C5        		.byte	-59
+ 1125 0069 C3        		.byte	-61
+ 1126 006a C0        		.byte	-64
+ 1127 006b BD        		.byte	-67
+ 1128 006c BA        		.byte	-70
+ 1129 006d B8        		.byte	-72
+ 1130 006e B5        		.byte	-75
+ 1131 006f B2        		.byte	-78
+ 1132 0070 AF        		.byte	-81
+ 1133 0071 AC        		.byte	-84
+ 1134 0072 A9        		.byte	-87
+ 1135 0073 A6        		.byte	-90
+ 1136 0074 A3        		.byte	-93
+ 1137 0075 A0        		.byte	-96
+ 1138 0076 9D        		.byte	-99
+ 1139 0077 9A        		.byte	-102
+ 1140 0078 97        		.byte	-105
+ 1141 0079 94        		.byte	-108
+ 1142 007a 91        		.byte	-111
+ 1143 007b 8E        		.byte	-114
+ 1144 007c 8A        		.byte	-118
+ 1145 007d 87        		.byte	-121
+ 1146 007e 84        		.byte	-124
+ 1147 007f 81        		.byte	-127
+ 1148 0080 7E        		.byte	126
+ 1149 0081 7B        		.byte	123
+ 1150 0082 78        		.byte	120
+ 1151 0083 75        		.byte	117
+ 1152 0084 71        		.byte	113
+ 1153 0085 6E        		.byte	110
+ 1154 0086 6B        		.byte	107
+ 1155 0087 68        		.byte	104
+ 1156 0088 65        		.byte	101
+ 1157 0089 62        		.byte	98
+ 1158 008a 5F        		.byte	95
+ 1159 008b 5C        		.byte	92
+ 1160 008c 59        		.byte	89
+ 1161 008d 56        		.byte	86
+ 1162 008e 53        		.byte	83
+ 1163 008f 50        		.byte	80
+ 1164 0090 4D        		.byte	77
+ 1165 0091 4A        		.byte	74
+ 1166 0092 47        		.byte	71
+ 1167 0093 45        		.byte	69
+ 1168 0094 42        		.byte	66
+ 1169 0095 3F        		.byte	63
+ 1170 0096 3C        		.byte	60
+ 1171 0097 3A        		.byte	58
+ 1172 0098 37        		.byte	55
+ 1173 0099 35        		.byte	53
+ 1174 009a 32        		.byte	50
+ 1175 009b 30        		.byte	48
+ 1176 009c 2D        		.byte	45
+ 1177 009d 2B        		.byte	43
+ 1178 009e 28        		.byte	40
+ 1179 009f 26        		.byte	38
+ 1180 00a0 24        		.byte	36
+ 1181 00a1 22        		.byte	34
+ 1182 00a2 20        		.byte	32
+ 1183 00a3 1E        		.byte	30
+ 1184 00a4 1C        		.byte	28
+ 1185 00a5 1A        		.byte	26
+ 1186 00a6 18        		.byte	24
+ 1187 00a7 16        		.byte	22
+ 1188 00a8 14        		.byte	20
+ 1189 00a9 13        		.byte	19
+ 1190 00aa 11        		.byte	17
+ 1191 00ab 10        		.byte	16
+ 1192 00ac 0E        		.byte	14
+ 1193 00ad 0D        		.byte	13
+ 1194 00ae 0B        		.byte	11
+ 1195 00af 0A        		.byte	10
+ 1196 00b0 09        		.byte	9
+ 1197 00b1 08        		.byte	8
+ 1198 00b2 07        		.byte	7
+ 1199 00b3 06        		.byte	6
+ 1200 00b4 05        		.byte	5
+ 1201 00b5 04        		.byte	4
+ 1202 00b6 03        		.byte	3
+ 1203 00b7 03        		.byte	3
+ 1204 00b8 02        		.byte	2
+ 1205 00b9 02        		.byte	2
+ 1206 00ba 01        		.byte	1
+ 1207 00bb 01        		.byte	1
+ 1208 00bc 00        		.byte	0
+ 1209 00bd 00        		.byte	0
+ 1210 00be 00        		.byte	0
+ 1211 00bf 00        		.byte	0
+ 1212 00c0 00        		.byte	0
+ 1213 00c1 00        		.byte	0
+ 1214 00c2 00        		.byte	0
+ 1215 00c3 01        		.byte	1
+ 1216 00c4 01        		.byte	1
+ 1217 00c5 01        		.byte	1
+ 1218 00c6 02        		.byte	2
+ 1219 00c7 02        		.byte	2
+ 1220 00c8 03        		.byte	3
+ 1221 00c9 04        		.byte	4
+ 1222 00ca 04        		.byte	4
+ 1223 00cb 05        		.byte	5
+ 1224 00cc 06        		.byte	6
+ 1225 00cd 07        		.byte	7
+ 1226 00ce 08        		.byte	8
+ 1227 00cf 09        		.byte	9
+ 1228 00d0 0B        		.byte	11
+ 1229 00d1 0C        		.byte	12
+ 1230 00d2 0D        		.byte	13
+ 1231 00d3 0F        		.byte	15
+ 1232 00d4 10        		.byte	16
+ 1233 00d5 12        		.byte	18
+ 1234 00d6 14        		.byte	20
+ 1235 00d7 15        		.byte	21
+ 1236 00d8 17        		.byte	23
+ 1237 00d9 19        		.byte	25
+ 1238 00da 1B        		.byte	27
+ 1239 00db 1D        		.byte	29
+ 1240 00dc 1F        		.byte	31
+ 1241 00dd 21        		.byte	33
+ 1242 00de 23        		.byte	35
+ 1243 00df 25        		.byte	37
+ 1244 00e0 27        		.byte	39
+ 1245 00e1 2A        		.byte	42
+ 1246 00e2 2C        		.byte	44
+ 1247 00e3 2E        		.byte	46
+ 1248 00e4 31        		.byte	49
+ 1249 00e5 33        		.byte	51
+ 1250 00e6 36        		.byte	54
+ 1251 00e7 38        		.byte	56
+ 1252 00e8 3B        		.byte	59
+ 1253 00e9 3E        		.byte	62
+ 1254 00ea 40        		.byte	64
+ 1255 00eb 43        		.byte	67
+ 1256 00ec 46        		.byte	70
+ 1257 00ed 49        		.byte	73
+ 1258 00ee 4C        		.byte	76
+ 1259 00ef 4F        		.byte	79
+ 1260 00f0 51        		.byte	81
+ 1261 00f1 54        		.byte	84
+ 1262 00f2 57        		.byte	87
+ 1263 00f3 5A        		.byte	90
+ 1264 00f4 5D        		.byte	93
+ 1265 00f5 60        		.byte	96
+ 1266 00f6 63        		.byte	99
+ 1267 00f7 67        		.byte	103
+ 1268 00f8 6A        		.byte	106
+ 1269 00f9 6D        		.byte	109
+ 1270 00fa 70        		.byte	112
+ 1271 00fb 73        		.byte	115
+ 1272 00fc 76        		.byte	118
+ 1273 00fd 79        		.byte	121
+ 1274 00fe 7C        		.byte	124
+ 1275               		.text
+ 1276               	.Letext0:
+ 1277               		.file 3 "/usr/local/CrossPack-AVR-20121207/lib/gcc/avr/4.6.2/../../../../avr/include/stdint.h"
+ 1278               		.file 4 "BlueRotary.h"
+DEFINED SYMBOLS
+                            *ABS*:00000000 Blue_Rotary-v3.c
+/var/folders/sc/pps508n52mj0zwl3_dqm_f940000gn/T//ccOcMJKV.s:2      *ABS*:0000003f __SREG__
+/var/folders/sc/pps508n52mj0zwl3_dqm_f940000gn/T//ccOcMJKV.s:3      *ABS*:0000003e __SP_H__
+/var/folders/sc/pps508n52mj0zwl3_dqm_f940000gn/T//ccOcMJKV.s:4      *ABS*:0000003d __SP_L__
+/var/folders/sc/pps508n52mj0zwl3_dqm_f940000gn/T//ccOcMJKV.s:5      *ABS*:00000034 __CCP__
+/var/folders/sc/pps508n52mj0zwl3_dqm_f940000gn/T//ccOcMJKV.s:6      *ABS*:00000000 __tmp_reg__
+/var/folders/sc/pps508n52mj0zwl3_dqm_f940000gn/T//ccOcMJKV.s:7      *ABS*:00000001 __zero_reg__
+/var/folders/sc/pps508n52mj0zwl3_dqm_f940000gn/T//ccOcMJKV.s:15     .text:00000000 __vector_16
+/var/folders/sc/pps508n52mj0zwl3_dqm_f940000gn/T//ccOcMJKV.s:76     .text:0000002c __vector_7
+/var/folders/sc/pps508n52mj0zwl3_dqm_f940000gn/T//ccOcMJKV.s:987    .bss:00000002 location_350
+/var/folders/sc/pps508n52mj0zwl3_dqm_f940000gn/T//ccOcMJKV.s:1019   .progmem.data:00000000 sine_table
+/var/folders/sc/pps508n52mj0zwl3_dqm_f940000gn/T//ccOcMJKV.s:208    .text:000000b6 __vector_8
+/var/folders/sc/pps508n52mj0zwl3_dqm_f940000gn/T//ccOcMJKV.s:981    .bss:00000000 location_440
+/var/folders/sc/pps508n52mj0zwl3_dqm_f940000gn/T//ccOcMJKV.s:340    .text:00000140 __vector_4
+                            *COM*:00000002 counter
+/var/folders/sc/pps508n52mj0zwl3_dqm_f940000gn/T//ccOcMJKV.s:448    .text:000001a4 __vector_5
+                            *COM*:00000002 dialed_number
+                            *COM*:00000014 phone_number
+                            *COM*:00000001 rotary_high
+/var/folders/sc/pps508n52mj0zwl3_dqm_f940000gn/T//ccOcMJKV.s:687    .text:000002c2 ioinit
+/var/folders/sc/pps508n52mj0zwl3_dqm_f940000gn/T//ccOcMJKV.s:773    .text:00000326 interpret_message
+/var/folders/sc/pps508n52mj0zwl3_dqm_f940000gn/T//ccOcMJKV.s:868    .text.startup:00000000 main
+/var/folders/sc/pps508n52mj0zwl3_dqm_f940000gn/T//ccOcMJKV.s:1011   .bss:00000008 message_index
+/var/folders/sc/pps508n52mj0zwl3_dqm_f940000gn/T//ccOcMJKV.s:993    .bss:00000004 connected
+                            *COM*:00000001 temp
+                            *COM*:00000001 number_length
+/var/folders/sc/pps508n52mj0zwl3_dqm_f940000gn/T//ccOcMJKV.s:1003   .bss:00000006 get_number_timeout
+                            *COM*:00000001 ring_tone_flag
+                            *COM*:00000001 message_complete
+
+UNDEFINED SYMBOLS
+__do_copy_data
+__do_clear_bss
+uart_init
+strtok
+strcpy
+uart_getc
