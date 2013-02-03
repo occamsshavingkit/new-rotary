@@ -190,7 +190,7 @@ int main(void){
         uart_recv = uart_getc();
         uart_err = (uart_recv & 0xff00) >> 8;
         uart_char = uart_recv & 0x00ff;
-        if(!(uart_err) && message_index < MAX_MESSAGE_LENGTH && uart_char != "\r")
+        if(!(uart_err) && message_index < MAX_MESSAGE_LENGTH && uart_char != '\r')
         {
             message[message_index++] = uart_char;
         }
