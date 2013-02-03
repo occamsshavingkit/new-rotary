@@ -14,9 +14,7 @@
 //================================================================
 //Define Global Variables
 //================================================================
-volatile char message[MAX_MESSAGE_LENGTH];	//Buffer for UART messages
 volatile char message_complete, ring_tone_flag;	//general purpse flags
-char final_message[MAX_MESSAGE_LENGTH];	//Final buffer for UART messages
 volatile int message_index=0;
 int dialed_number, counter;
 int get_number_timeout=0;
@@ -153,7 +151,24 @@ void ioinit(void)
     PCMSK2 |= (1<<PCINT19)|(1<<PCINT20);
 }
 
+void interpret_message(char *message)
+{
+	char words[8][32];
+	char *p = strtok(message, " ");
+	char i;
+	while (*p)
+	{
+		strcpy(&words[i++], p);
+		p = strtok(NULL, " ");
+	}
+	if(strcmp(&words[0], "HFP"))
+	{
+		
+	}
+}
+
 int main(void){
+	volatile char message[MAX_MESSAGE_LENGTH];	//Buffer for UART messages
     int uart_recv;
     char uart_err;
     char uart_char;
