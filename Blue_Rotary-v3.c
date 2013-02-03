@@ -177,7 +177,7 @@ void interpret_message(char *message)
 }
 
 int main(void){
-	volatile char message[MAX_MESSAGE_LENGTH];	//Buffer for UART messages
+    char message[MAX_MESSAGE_LENGTH];	//Buffer for UART messages
     int uart_recv;
     char uart_err;
     char uart_char;
@@ -188,8 +188,8 @@ int main(void){
     message_index = 0;
     while(1){
         uart_recv = uart_getc();
-        uart_err = (c & 0xff00) >> 8;
-        uart_char = c & 0x00ff;
+        uart_err = (uart_recv & 0xff00) >> 8;
+        uart_char = uart_recv & 0x00ff;
         if(!(uart_err) && message_index < MAX_MESSAGE_LENGTH && uart_char != "\r")
         {
             message[message_index++] = uart_char;
